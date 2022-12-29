@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Unbounded:wght@200;400;700;900&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="style.css" />
+    <script defer src="main.js"></script>
+    <title>Weather App Project</title>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Weather App</h1>
+      </div>
+
+      <div>
+        <form id="weather_form">
+          <label for="weather_submit">Pick a location: </label>
+          <input type="text" id="weather_submit" name="weather_submit" autocomplete="off" />
+          <input type="submit" form="weather_form" value="Submit" />
+        </form>
+      </div>
+    </header>
+
+    <div id="main_content_container" class="temp_widget_off">
+      <aside id="weather_temp_widget" class="hidden">
+        <form id="temp_form">
+          <label for="temperature_convertion">Convert the Temperature</label>
+          <input type="number" name="temperature_convertion" id="temp-to-convert" />
+
+          <label for="convert_temp_to_celcius">To Celcius</label>
+          <input type="radio" name="convert_temperature" id="to-c" value="c" />
+
+          <label for="convert_temp_to_fahrenheit">To Fahrenheit</label>
+          <input type="radio" name="convert_temperature" id="to-f" value="f" />
+
+          <input type="submit" form="temp_form" value="Submit" />
+        </form>
+        <h4></h4>
+      </aside>
+
+      <main id="main_article">
+        <p class="remove">Choose a location to view the weather</p>
+        <article id="weather_current" class="weather weather_article"></article>
+        <aside id="weather_upcoming" class="weather"></aside>
+      </main>
+
+      <aside id="search_aside">
+        <section id="search_section">
+          <h4>Previous Searches</h4>
+          <ul>
+            <p class="remove">No previous searches.</p>
+          </ul>
+        </section>
+      </aside>
+    </div>
+
+    <!-- <footer>
+      <p>This is the footer</p>
+    </footer> -->
+  </body>
+</html>
