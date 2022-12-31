@@ -1,3 +1,6 @@
+const celcius = "c";
+const fahrenheit = "f";
+
 const weatherForm = document.querySelector("#weather_form");
 weatherForm.addEventListener("submit", weatherFormOnSubmit);
 
@@ -248,9 +251,9 @@ function tempConvertion(type, temp) {
   const fahrenheit2celcius = 5 / 9;
   const celcius2fahrenheit = 9 / 5;
 
-  if (type === "c") {
+  if (type === celcius) {
     return Math.round(temp * fahrenheit2celcius + degreeDifference);
-  } else if (type === "f") {
+  } else if (type === fahrenheit) {
     return Math.round((temp - degreeDifference) * celcius2fahrenheit);
   }
 }
