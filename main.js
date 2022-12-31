@@ -1,42 +1,148 @@
 const weatherForm = document.querySelector("#weather_form");
-
-// ! Joshua Nelson
-// event can be called seperately and be its own function
 weatherForm.addEventListener("submit", weatherFormOnSubmit);
 
 const tempForm = document.querySelector("#temp_form");
+tempForm.addEventListener("submit", tempFormOnSubmit);
 
-tempForm.addEventListener("submit", (onSubmitEvent) => {
-  onSubmitEvent.preventDefault();
-  document.querySelector("aside h4").textContent = "";
-
-  const tempToConvert = document.querySelector("#temp-to-convert").value;
-  const tempType = onSubmitEvent.target.convert_temperature.value;
-  const tempConverted = temperatureConvertion(tempType, tempToConvert);
-
-  const tempConvertedContainer = document.querySelector("aside h4");
-
-  tempConvertedContainer.append(tempConverted);
-});
-
+/**
+ * This function will execute when an event is detected on the 'weather_form'
+ * It will first prevent the default action on the event
+ * Then it will extract the 'user input' from said form
+ * Combine it with the API end point and then send it to another function
+ * @param {submitEvent} event
+ */
 function weatherFormOnSubmit(event) {
-  // prevent default behaviour
   event.preventDefault();
 
-  // extract input from user
   const location = event.target.weather_submit;
-
-  // construct API endpoint
   const BASE_URL = `https://wttr.in/${location.value}?format=j1`;
 
-  // call on function to fetch data and create an adequate response
   fetchWeatherInformation(BASE_URL, location.value);
 
-  // reset input field
   event.target.weather_submit.value = "";
 }
 
-// ! research modularity
+/**
+ * This function will execute when an event is detected on the 'temp_form'
+ * @param {submitEvent} event
+ */
+function tempFormOnSubmit(event) {
+  event.preventDefault();
+
+  const tempType = event.target.convert_temperature.value;
+  const tempToConvert = document.querySelector("#temp-to-convert").value;
+
+  handleTemperatureConvertionResponse(tempType, tempToConvert);
+}
+
+/**
+ *  This function will take in two parameters
+ * @param {string} url
+ * @param {string} weatherLocation -
+ */
+function fetchWeatherInformation(url) {
+  fetch(url)
+    .then((response) => response.json())
+    .then((response) => handleResponse(response, url))
+    .catch((error) => displayError(error));
+}
+
+function handleResponse(response, url) {
+  const weatherObj = createWeatherInfoObjectFromResponse(response, url);
+  const location = weatherObj.user_input;
+
+  hideElements();
+  showElements();
+  rearrangeGridDisplay();
+
+  const mainWeatherContainer = document.querySelector("#weather_current");
+  const mainWeather = createMainWeatherArticle(location, weatherObj);
+  mainWeatherContainer.append(mainWeather);
+
+  const upcomingWeatherContainer = document.querySelector("#weather_upcoming");
+  const weatherArticles = createUpcomingWeatherArticles(weatherObj);
+  upcomingWeatherContainer.append(...weatherArticles);
+
+  const unorderedSearches = document.querySelector("#search_section ul");
+  const searchListElement = createSearchLink(weatherObj);
+  unorderedSearches.append(searchListElement);
+}
+
+function createWeatherInfoObjectFromResponse(response, url) {
+  const { current_condition, nearest_area, weather } = response;
+  const userLocation = extractLocation(url);
+  const todaysChances = dayChanceOf(weather[0].hourly);
+  const imgInfo = weatherIMG(todaysChances);
+
+  const weatherObj = {
+    user_input: userLocation,
+    nearest_area: nearest_area[0].areaName[0].value,
+    region: nearest_area[0].region[0].value,
+    country: nearest_area[0].country[0].value,
+    feelLikeTempF: current_condition[0].FeelsLikeF,
+    today: {
+      name: "Today",
+      avgTemp: weather[0].avgtempF,
+      maxTemp: weather[0].maxtempF,
+      minTemp: weather[0].mintempF,
+      chanceOfSunshine: todaysChances[0],
+      chanceOfRain: todaysChances[1],
+      chanceOfSnow: todaysChances[2],
+      img_path_name: imgInfo[0],
+      img_alt: imgInfo[1],
+    },
+    tomorrow: {
+      name: "Tomorrow",
+      avgTemp: weather[1].avgtempF,
+      maxTemp: weather[1].maxtempF,
+      minTemp: weather[1].mintempF,
+    },
+    dayAfterTomorrow: {
+      name: "Day After Tomorrow",
+      avgTemp: weather[2].avgtempF,
+      maxTemp: weather[2].maxtempF,
+      minTemp: weather[2].mintempF,
+    },
+    search_url: url,
+  };
+
+  return weatherObj;
+}
+
+function handleLocationAreaMismatch(location, areaName) {
+  if (location !== areaName) {
+    return "Nearest Area";
+  }
+  return "Area";
+}
+
+function dayChanceOf(hourlyChances) {
+  const chanceOfSunshine = chanceOf("sunshine", hourlyChances);
+  const chanceOfRain = chanceOf("rain", hourlyChances);
+  const chanceOfSnow = chanceOf("snow", hourlyChances);
+
+  return [chanceOfSunshine, chanceOfRain, chanceOfSnow];
+}
+
+function chanceOf(type, hourly) {
+  let chances = 0;
+  hourly.forEach((hour) => (chances += Number(hour[`chanceof${type}`])));
+  chances = chances / hourly.length;
+  return Math.round(chances);
+}
+
+function weatherIMG(chances) {
+  const highestChance = Math.max(...chances);
+
+  if (highestChance === chances[0]) {
+    return ["summer", "sun"];
+  } else if (highestChance === chances[1]) {
+    return ["torrential-rain", "rain"];
+  } else {
+    return ["light-snow", "snow"];
+  }
+}
+
 function hideElements() {
   const elementsToRemove = document.querySelectorAll(".remove");
 
@@ -58,147 +164,11 @@ function rearrangeGridDisplay() {
   document.querySelector("#main_content_container").classList.add("temp_widget_on");
 }
 
-function fetchWeatherInformation(BASE_URL, location) {
-  fetch(BASE_URL)
-    .then((response) => {
-      if (!response.ok) {
-        console.log("The location you selected does not exist.");
-      } else {
-        // At this level it is still
-        // Prototype: Promise
-        // PromiseState: "fullfilled"
-        // PromiseResult: Object json()
-        // const resp = response.json();
-        //console.log(resp);
-        return response.json();
-      }
-    })
-    .then(({ current_condition, nearest_area, request, weather }) => {
-      // hide elements
-      hideElements();
-
-      // show elements
-      showElements();
-
-      // rearrange grid display
-      rearrangeGridDisplay();
-
-      // creating && updating
-      const mainWeatherContainer = document.querySelector("#weather_current");
-      const mainWeather = createMainWeatherArticle(location, current_condition, nearest_area, weather);
-      mainWeatherContainer.append(mainWeather);
-
-      const upComingWeather = document.querySelector("#weather_upcoming");
-
-      // creating
-      const tdyWeatherArticle = createUpComingWeatherArticle(0, weather);
-      const tmrwWeatherArticle = createUpComingWeatherArticle(1, weather);
-      const dWeatherArticle = createUpComingWeatherArticle(2, weather);
-
-      // appending
-      upComingWeather.append(tdyWeatherArticle, tmrwWeatherArticle, dWeatherArticle);
-
-      // creating && updating
-      const unorderedSearches = document.querySelector("#search_section ul");
-      const searchListLink = createSearchLinks(BASE_URL, current_condition, nearest_area);
-
-      // appending
-      unorderedSearches.append(searchListLink);
-    })
-    .catch(displayError);
-}
-
-function createMainWeatherArticle(location, current_condition, nearest_area, weather) {
-  // creating
-  const weatherContainer = document.createElement("div");
-  weatherContainer.classList.add("remove", "weather_article");
-
-  const areaName = location;
-  const nearest_area_name = nearest_area[0].areaName[0].value;
-
-  // Heading
-  const heading2 = document.createElement("h2");
-  heading2.textContent = areaName;
-
-  // Area || Nearest Area v.1
-  const typeOfArea = handleSubmitInputAndAreaNameMismatch(location, nearest_area_name);
-
-  // Area || Nearest Area v.2
-  const areaP = createWeatherParagrah(typeOfArea, nearest_area_name);
-
-  // Region
-  const regionName = nearest_area[0].region[0].value;
-  const regionP = createWeatherParagrah("Region", regionName);
-
-  // Country
-  const countryName = nearest_area[0].country[0].value;
-  const countryP = createWeatherParagrah("Country", countryName);
-
-  // Currently
-  const temp = current_condition[0].FeelsLikeF;
-  const currentlyP = createWeatherParagrah("Currently", temp);
-
-  // Chance of Sunshine
-  const chanceOfSunshine = chanceOf("sunshine", weather);
-  const sunshineP = createWeatherParagrah("Chance of Sunshine", chanceOfSunshine);
-
-  // Chance of Rain
-  const chanceOfRain = chanceOf("rain", weather);
-  const rainP = createWeatherParagrah("Chance of Rain", chanceOfRain);
-
-  // Chance of Snow
-  const chanceOfSnow = chanceOf("snow", weather);
-  const snowP = createWeatherParagrah("Chance of Snow", chanceOfSnow);
-
-  // Display IMG
-  const weatherIMG = displayChanceOfIMG(chanceOfSunshine, chanceOfRain, chanceOfSnow);
-
-  // appeding
-  weatherContainer.append(heading2, areaP, weatherIMG, regionP, countryP, currentlyP, sunshineP, rainP, snowP);
-
-  return weatherContainer;
-}
-
-function createUpComingWeatherArticle(index, weather) {
-  let celFah = "°F";
-
-  // heading
-  const headingH3 = createUpComingWeatherHeading(index);
-
-  // article
-  const upComingWeatherArticle = document.createElement("article");
-  upComingWeatherArticle.classList.add("remove", "weather_article", "upcoming_weather_article");
-
-  // averageTemp
-  const avgTemp = weather[index].avgtempF + celFah;
-  const avgP = createWeatherParagrah("Average Temperature", avgTemp);
-
-  // maxTemp
-  const maxTemp = weather[index].maxtempF + celFah;
-  const maxP = createWeatherParagrah("Max Temperature", maxTemp);
-
-  // minTemp
-  const minTemp = weather[index].mintempF + celFah;
-  const minP = createWeatherParagrah("Minimum Temperature", minTemp);
-
-  // appending elements
-  upComingWeatherArticle.append(headingH3, avgP, maxP, minP);
-
-  return upComingWeatherArticle;
-}
-
-function createUpComingWeatherHeading(dayType) {
-  const heading = document.createElement("h3");
-
-  if (dayType === 1) {
-    heading.textContent = "Tomorrow";
-  } else if (dayType === 2) {
-    heading.textContent = "Day After Tomorrow";
-  } else {
-    heading.textContent = "Today";
-  }
-
-  return heading;
+function createIMG(pathText, altText) {
+  const img = document.createElement("img");
+  img.setAttribute("src", `./assets/icons8-${pathText}.gif`);
+  img.setAttribute("alt", altText);
+  return img;
 }
 
 function createWeatherParagrah(type, content) {
@@ -215,92 +185,108 @@ function createWeatherParagrah(type, content) {
   return paragraph;
 }
 
-/**
- * This function takes in the BASE_URL, current_condition, and nearest_area and creates a list element with a link to the BASE_URL
- * @param {string} BASE_URL
- * @param {array} current_condition
- * @param {array} nearest_area
- * @returns listElement
- */
-function createSearchLinks(BASE_URL, current_condition, nearest_area) {
-  const searchListElement = document.createElement("li");
+function createMainWeatherArticle(location, weather) {
+  const areaType = handleLocationAreaMismatch(location, weather.nearest_area);
 
+  const heading2 = document.createElement("h2");
+  heading2.textContent = location;
+
+  const areaP = createWeatherParagrah(areaType, weather.nearest_area);
+
+  const weatherIMG = createIMG(weather.today.img_path_name, weather.today.img_alt);
+
+  const regionName = weather.region;
+  const regionP = createWeatherParagrah("Region", regionName);
+
+  const countryName = weather.country;
+  const countryP = createWeatherParagrah("Country", countryName);
+
+  const temp = weather.feelLikeTempF;
+  const currentlyP = createWeatherParagrah("Currently", temp);
+
+  const chanceOfSunshine = weather.today.chanceOfSunshine;
+  const sunshineP = createWeatherParagrah("Chance of Sunshine", chanceOfSunshine);
+
+  const chanceOfRain = weather.today.chanceOfRain;
+  const rainP = createWeatherParagrah("Chance of Rain", chanceOfRain);
+
+  const chanceOfSnow = weather.today.chanceOfSnow;
+  const snowP = createWeatherParagrah("Chance of Snow", chanceOfSnow);
+
+  const weatherContainer = document.createElement("div");
+  weatherContainer.classList.add("remove", "weather_article");
+  weatherContainer.append(heading2, areaP, weatherIMG, regionP, countryP, currentlyP, sunshineP, rainP, snowP);
+
+  return weatherContainer;
+}
+
+function createArticle(day) {
+  const h3 = document.createElement("h3");
+  h3.textContent = day.name;
+
+  const avgP = createWeatherParagrah("Average Temperature", `${day.avgTemp}°F`);
+  const maxP = createWeatherParagrah("Max Temperature", `${day.maxTemp}°F`);
+  const minP = createWeatherParagrah("Minimum Temperature", `${day.minTemp}°F`);
+
+  const upComingWeatherArticle = document.createElement("article");
+  upComingWeatherArticle.classList.add("remove", "weather_article", "upcoming_weather_article");
+  upComingWeatherArticle.append(h3, avgP, maxP, minP);
+
+  return upComingWeatherArticle;
+}
+
+function createUpcomingWeatherArticles(weather) {
+  const today = createArticle(weather.today);
+  const tomorrow = createArticle(weather.tomorrow);
+  const dayAfterTomorrow = createArticle(weather.dayAfterTomorrow);
+
+  return [today, tomorrow, dayAfterTomorrow];
+}
+
+function tempConvertion(type, temp) {
+  const degreeDifference = 32;
+  const fahrenheit2celcius = 5 / 9;
+  const celcius2fahrenheit = 9 / 5;
+
+  if (type === "c") {
+    return Math.round(temp * fahrenheit2celcius + degreeDifference);
+  } else if (type === "f") {
+    return Math.round((temp - degreeDifference) * celcius2fahrenheit);
+  }
+}
+
+function createSearchLink(weather) {
   const searchLink = document.createElement("a");
-  searchLink.href = BASE_URL;
-  searchLink.textContent = nearest_area[0].areaName[0].value;
+  searchLink.href = weather.search_url;
+  searchLink.textContent = weather.user_input;
 
-  const feelsLikeTemp = current_condition[0].FeelsLikeF + "°F";
+  searchLink.addEventListener("click", searchLinkClickEvent);
 
-  searchLink.addEventListener("click", (clickEvent) => {
-    clickEvent.preventDefault();
-    clickEvent.target.parentNode.remove();
-    fetchWeatherInformation(BASE_URL);
-  });
+  const feelsLikeTemp = `${weather.feelLikeTempF}°F`;
 
+  const searchListElement = document.createElement("li");
   searchListElement.append(searchLink, " - ", feelsLikeTemp);
 
   return searchListElement;
 }
 
-/**
- * This function takes in the type of weather and the weather array and returns the average chance of the type of weather
- * @param {string} type - sunshine, rain, snow
- * @param {array} weather - is an array of objects one of which include the hourly weather. An array of 8 values
- * @returns number - the average chance of the type of weather
- */
-function chanceOf(type, weather) {
-  let chanceOfNum = 0;
-  const chanceOf = `chanceof${type}`;
-  weather[0].hourly.forEach((hour) => (chanceOfNum += Number(hour[chanceOf])));
-
-  chanceOfNum = chanceOfNum / weather[0].hourly.length;
-
-  return chanceOfNum;
+function extractLocation(url) {
+  const inputLocation = url.split(/[/?]/)[3];
+  return inputLocation;
 }
 
-function displayChanceOfIMG(chanceOfSunshine, chanceOfRain, chanceOfSnow) {
-  const tempArray = [chanceOfSunshine, chanceOfRain, chanceOfSnow];
-  let highestChanceIndex = 0;
-
-  let highestChance = tempArray.reduce((highest, current, index) => {
-    if (current > highest) {
-      highest = current;
-      highestChanceIndex = index;
-    }
-    return highest;
-  }, 0);
-
-  if (highestChanceIndex === 0) {
-    return createIMG("summer", "sun");
-  } else if (highestChanceIndex === 1) {
-    return createIMG("torrential-rain", "rain");
-  } else if (highestChanceIndex === 2) {
-    return createIMG("light-snow", "snow");
-  }
+function searchLinkClickEvent(event) {
+  event.preventDefault();
+  event.target.parentNode.remove();
+  fetchWeatherInformation(event.target.href);
 }
 
-function createIMG(pathText, altText) {
-  const img = document.createElement("img");
-  img.setAttribute("src", `./assets/icons8-${pathText}.gif`);
-  img.setAttribute("alt", altText);
-  return img;
-}
-
-function handleSubmitInputAndAreaNameMismatch(locationInput, nearest_area_name) {
-  if (locationInput !== nearest_area_name) {
-    return "Nearest Area";
-  }
-  return "Area";
-}
-
-function temperatureConvertion(type, temp) {
-  temp = Number(temp);
-
-  if (type === "c") {
-    return (((temp - 32) * 5) / 9).toFixed(2);
-  } else if (type === "f") {
-    return (temp * 9) / 5 + 32;
-  }
+function handleTemperatureConvertionResponse(type, temp) {
+  document.querySelector("aside h4").textContent = "";
+  const temp2Num = Number(temp);
+  const tempConverted = tempConvertion(type, temp2Num);
+  const tempConvertedContainer = document.querySelector("aside h4");
+  tempConvertedContainer.append(tempConverted);
 }
 
 function displayError(error) {
